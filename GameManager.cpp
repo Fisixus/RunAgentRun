@@ -3,6 +3,7 @@ interfacing with a Window System */
 
 #include <time.h>
 #include <stdlib.h>
+#include <vector>
 
 #include <GL/glut.h>
 
@@ -40,13 +41,19 @@ typedef struct {
 } Agent;
 
 typedef struct {
-	Location center;
+	Location frontLocBot;
+	Location frontLocTop;
+	Location backLocBot;
+	Location backLocTop;
 	Color color;
 	Velocity velocity;
 } Truck;
 
 typedef struct {
-	Location center;
+	Location frontLocBot;
+	Location frontLocTop;
+	Location backLocBot;
+	Location backLocTop;
 	Color color;
 	Velocity velocity;
 } Car;
@@ -56,6 +63,11 @@ typedef struct {
 	Color color;
 } Coin;
 
+std::vector<Car> cars;
+std::vector<Truck> trucks;
+std::vector<Coin> coins;
+
+std::vector<Location> vehicleLocations;
 
 void initFunc(void)
 {
@@ -72,12 +84,12 @@ void initFunc(void)
 
 	/* set clear color to black and clear window */
 
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(0.0, 0.0, 0.0, 0.5);
 
 
 }
 
-/* rehaping routine called whenever window is resized
+/* reshaping routine called whenever window is resized
 or moved */
 
 void reshapeFunc(GLsizei w, GLsizei h)
@@ -149,6 +161,19 @@ void mouseFunc(int btn, int state, int x, int y)
 	}
 }
 
+void fillVehicleLocations(int topRoady, int vehicleRotation)
+{
+	Location vehicleLocation;
+	if(vehicleRotation % 2 == 0)
+		vehicleLocation.x = 0;
+	else
+		vehicleLocation.x = ww;
+
+	vehicleLocation.y = (topRoady + topRoady + wh / 24) / 2;
+	vehicleLocations.push_back(vehicleLocation);
+
+}
+
 void drawRoads(int sideWalkNumber, int topSidewalky) 
 {
 	int topRoady = topSidewalky;
@@ -159,7 +184,10 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 		{
 			int leftTapeofRoadx = 0;
 			int rightTapeofRoadx = ww / 50;
+			fillVehicleLocations(topRoady, i);
 			topRoady += wh / 24;
+
+
 			for (int j = 0; j < totalNumberOfTape; j++)
 			{
 				glBegin(GL_LINES);
@@ -170,6 +198,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 				rightTapeofRoadx = leftTapeofRoadx + ww / 50;
 			}
 		}
+		fillVehicleLocations(topRoady, 3);
 	}
 	else
 	{
@@ -177,17 +206,21 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 		{
 			int leftTapeofRoadx = 0;
 			int rightTapeofRoadx = ww / 50;
+			fillVehicleLocations(topRoady, i);
 			topRoady += wh / 24;
+
+
 			for (int j = 0; j < totalNumberOfTape; j++)
 			{
 				glBegin(GL_LINES);
-				glVertex2f(leftTapeofRoadx, topRoady);
-				glVertex2f(rightTapeofRoadx, topRoady);
+					glVertex2f(leftTapeofRoadx, topRoady);
+					glVertex2f(rightTapeofRoadx, topRoady);
 				glEnd();
 				leftTapeofRoadx = rightTapeofRoadx + ww / 100;
 				rightTapeofRoadx = leftTapeofRoadx + ww / 50;
 			}
 		}
+		fillVehicleLocations(topRoady, 2);
 	}
 }
 
@@ -203,6 +236,7 @@ void drawSideWalks(int bottomSidewalky, int topSidewalky)
 
 void drawMap() 
 {
+	vehicleLocations.clear();
 	int bottomSidewalky, topSidewalky, totalRoadLengthy;
 	totalRoadLengthy = wh - wh / 4;
 	bottomSidewalky = 0;
@@ -226,6 +260,35 @@ void drawMap()
 	}
 }
 
+void drawCars()
+{
+	for (int i = 0; i < cars.size(); i++)
+	{
+		glBegin(GL_TRIANGLE_STRIP);
+			glVertex2f(cars[i].backLocBot.x, cars[i].backLocBot.y);
+			glVertex2f(cars[i].backLocTop.x, cars[i].backLocTop.y);
+			glVertex2f(cars[i].frontLocBot.x, cars[i].frontLocBot.y);
+			glVertex2f(cars[i].frontLocTop.x, cars[i].frontLocTop.y);
+		glEnd();
+
+	}
+}
+
+void drawTrucks()
+{
+	for (int i = 0; i < trucks.size(); i++)
+	{
+		glBegin(GL_TRIANGLE_STRIP);
+			glVertex2f(trucks[i].backLocBot.x, trucks[i].backLocBot.y);
+			glVertex2f(trucks[i].backLocTop.x, trucks[i].backLocTop.y);
+			glVertex2f(trucks[i].frontLocBot.x, trucks[i].frontLocBot.y);
+			glVertex2f(trucks[i].frontLocTop.x, trucks[i].frontLocTop.y);
+		glEnd();
+
+	}
+}
+
+
 /* display callback required by GLUT 3.0 */
 
 void displayFunc(void)
@@ -234,9 +297,93 @@ void displayFunc(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 	//Sidewalks
 	drawMap();
-	
+	drawCars();
+	drawTrucks();
 	glFlush();
 	glutSwapBuffers();
+}
+
+void generateVehicle(int id) 
+{
+	Location vehicleBackBot, vehicleBackTop , vehicleFrontBot, vehicleFrontTop;
+	Car car;
+	Truck truck;
+	Location randomLocation;
+	randomLocation.x = 0;
+	randomLocation.y = 0;
+	for (int i = 0; i < vehicleLocations.size(); i++)
+	{
+		randomLocation = vehicleLocations[rand() % 18];
+		
+	}
+	int truckOrCar = rand() % 2 + 1;
+	
+
+	if(truckOrCar == 1) // Car
+	{
+
+		if(randomLocation.x == 0)
+		{
+			vehicleBackBot.x = randomLocation.x;
+			vehicleBackTop.x = randomLocation.x;
+			vehicleFrontBot.x = wh / 48;
+			vehicleFrontTop.x = wh / 48;
+		}
+		else
+		{
+			vehicleBackBot.x = randomLocation.x;
+			vehicleBackTop.x = randomLocation.x;
+			vehicleFrontBot.x = ww - wh / 48;
+			vehicleFrontTop.x = ww - wh / 48;
+		}
+
+		vehicleBackBot.y = randomLocation.y - wh / 96;
+		
+		vehicleBackTop.y = randomLocation.y + wh / 96;
+		
+		vehicleFrontBot.y = randomLocation.y - wh / 96;
+		
+		vehicleFrontTop.y = randomLocation.y + wh / 96;
+		
+
+		car.backLocBot = vehicleBackBot;
+		car.backLocTop = vehicleBackTop;
+		car.frontLocBot = vehicleFrontBot;
+		car.frontLocTop = vehicleFrontTop;
+		cars.push_back(car);
+	}
+
+	if (truckOrCar == 2) // Truck
+	{
+		if (randomLocation.x == 0)
+		{
+			vehicleBackBot.x = randomLocation.x;
+			vehicleBackTop.x = randomLocation.x;
+			vehicleFrontBot.x = wh / 12;
+			vehicleFrontTop.x = wh / 12;
+		}
+		else
+		{
+			vehicleBackBot.x = randomLocation.x;
+			vehicleBackTop.x = randomLocation.x;
+			vehicleFrontBot.x = ww - wh / 12;
+			vehicleFrontTop.x = ww - wh / 12; //height * 4 = width
+		}
+
+		vehicleBackBot.y = randomLocation.y - wh / 96;
+		vehicleBackTop.y = randomLocation.y + wh / 96;
+		vehicleFrontBot.y = randomLocation.y - wh / 96;
+		vehicleFrontTop.y = randomLocation.y + wh / 96;
+		
+		truck.backLocBot = vehicleBackBot;
+		truck.backLocTop = vehicleBackTop;
+		truck.frontLocBot = vehicleFrontBot;
+		truck.frontLocTop = vehicleFrontTop;
+		trucks.push_back(truck);
+	}
+
+	glutTimerFunc(500 , generateVehicle, 0);
+	glutPostRedisplay();
 }
 
 int main(int argc, char** argv)
@@ -249,10 +396,9 @@ int main(int argc, char** argv)
 	glutReshapeFunc(reshapeFunc);
 	glutMouseFunc(mouseFunc);
 	glutDisplayFunc(displayFunc);
-	//glutTimerFunc(20, myTimeout, 0);
+	glutTimerFunc(500, generateVehicle, 0);
 	glutKeyboardFunc(keyboardFunc);
 	glutSpecialFunc(specialKeyInputFunc);
-
 	glutMainLoop();
 
 }
