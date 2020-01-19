@@ -74,12 +74,14 @@ typedef struct {
 	Color color;
 } Coin;
 
+#define PI 3.14159265
+
 std::vector<Car> cars;
 std::vector<Truck> trucks;
 std::vector<Coin> coins;
 
 std::vector<Location> vehicleLocations;
-
+std::vector<Location> coinLocations;
 
 Color giveColor(Colors colors) 
 {
@@ -133,6 +135,12 @@ Color giveColor(Colors colors)
 	return color;
 }
 
+template<class T>
+constexpr const T& clamp(const T& v, const T& lo, const T& hi)
+{
+	return (v < lo) ? lo : (hi < v) ? hi : v;
+}
+
 void initFunc(void)
 {
 
@@ -156,7 +164,7 @@ or moved */
 
 void reshapeFunc(GLsizei w, GLsizei h)
 {
-
+	coins.clear();
 	cars.clear();
 	trucks.clear();
 
@@ -225,6 +233,19 @@ void mouseFunc(int btn, int state, int x, int y)
 	}
 }
 
+void fillCoinLocations(int topRoady)
+{
+	Location coinLocation;
+	int allWidth;
+	allWidth = rand() % ww;
+	coinLocation.x = clamp(allWidth, ww/50, ww-ww/50);
+
+	coinLocation.y = (topRoady + topRoady + wh / 24) / 2;
+	coinLocations.push_back(coinLocation);
+
+}
+
+
 void fillVehicleLocations(int topRoady, int vehicleRotation)
 {
 	Location vehicleLocation;
@@ -248,6 +269,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 		{
 			int leftTapeofRoadx = 0;
 			int rightTapeofRoadx = ww / 50;
+			fillCoinLocations(topRoady);
 			fillVehicleLocations(topRoady, i);
 			topRoady += wh / 24;
 
@@ -265,6 +287,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 			}
 		}
 		fillVehicleLocations(topRoady, 3);
+		fillCoinLocations(topRoady);
 	}
 	else
 	{
@@ -272,6 +295,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 		{
 			int leftTapeofRoadx = 0;
 			int rightTapeofRoadx = ww / 50;
+			fillCoinLocations(topRoady);
 			fillVehicleLocations(topRoady, i);
 			topRoady += wh / 24;
 
@@ -289,6 +313,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 			}
 		}
 		fillVehicleLocations(topRoady, 2);
+		fillCoinLocations(topRoady);
 	}
 }
 
@@ -306,6 +331,7 @@ void drawSideWalks(int bottomSidewalky, int topSidewalky)
 
 void drawMap() 
 {
+	coinLocations.clear();
 	vehicleLocations.clear();
 	int bottomSidewalky, topSidewalky, totalRoadLengthy;
 	totalRoadLengthy = wh - wh / 4;
@@ -359,6 +385,25 @@ void drawTrucks()
 	}
 }
 
+void drawCoins()
+{
+	float angle;
+	Color color = giveColor(yellow);
+	for (int i = 0; i < coins.size(); i++)
+	{
+		glColor3ub(color.r, color.g, color.b);
+		glBegin(GL_POLYGON);
+		for (int j = 0; j < 30; ++j)
+		{
+			angle = 2 * PI * j / 30;
+			glVertex2f((float)coins[i].center.x + cos(angle) * ww/100, 
+				(float)coins[i].center.y + sin(angle) * ww/100);
+		}
+
+		glEnd();
+	}
+}
+
 
 /* display callback required by GLUT 3.0 */
 
@@ -368,13 +413,14 @@ void displayFunc(void)
 	drawMap();
 	drawCars();
 	drawTrucks();
+	drawCoins();
 	glFlush();
 	glutSwapBuffers();
 }
 
 void generateVehicle(int id) 
 {
-	Color randomColor = giveColor(static_cast<Colors>(rand() % 4));
+	Color randomColor = giveColor(static_cast<Colors>(rand() % 4)); // It gives random color to vehicle
 
 	Location vehicleBackBot, vehicleBackTop , vehicleFrontBot, vehicleFrontTop;
 	Car car;
@@ -527,6 +573,27 @@ void moveVehicle(int id)
 	glutPostRedisplay();
 }
 
+void generateCoin(int id)
+{
+	if(coins.size() == 8)
+	{
+		coins.erase(coins.begin());
+	}
+	Location randomLocation;
+	Coin coin;
+	//printf("OpenGL version supported %d\n", coinLocations.size());
+	for (int i = 0; i < coinLocations.size(); i++)
+	{
+		randomLocation = coinLocations[rand() % 18];
+	}
+	coin.center = randomLocation;
+	coin.color = giveColor(yellow);
+	coins.push_back(coin);
+
+	glutTimerFunc(2000, generateCoin, 2);
+	glutPostRedisplay();
+}
+
 int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
@@ -545,6 +612,7 @@ int main(int argc, char** argv)
 	glutTimerFunc(1000, generateVehicle, 0);
 	glutTimerFunc(1000, generateVehicle, 0);
 	glutTimerFunc(20, moveVehicle, 1);
+	glutTimerFunc(2000, generateCoin, 2);
 	glutKeyboardFunc(keyboardFunc);
 	glutSpecialFunc(specialKeyInputFunc);
 	glutMainLoop();
