@@ -46,7 +46,9 @@ typedef struct {
 } Velocity;
 
 typedef struct {
-	Location center;
+	Location backLocBotLeft;
+	Location backLocBotRight;
+	Location frontLocTop;
 	Color color;
 	Velocity velocity;
 } Agent;
@@ -82,6 +84,9 @@ std::vector<Coin> coins;
 
 std::vector<Location> vehicleLocations;
 std::vector<Location> coinLocations;
+
+Agent agent;
+//Location agentLocations[3];
 
 Color giveColor(Colors colors) 
 {
@@ -141,6 +146,19 @@ constexpr const T& clamp(const T& v, const T& lo, const T& hi)
 	return (v < lo) ? lo : (hi < v) ? hi : v;
 }
 
+void initAgent()
+{
+	agent.backLocBotLeft.x = (int)ceil((GLdouble)ww / 2) - (int)ceil((GLdouble)wh / 48);
+	agent.backLocBotRight.x = (int)ceil((GLdouble)ww / 2) + (int)ceil((GLdouble)wh / 48);
+	agent.frontLocTop.x = (int)ceil((GLdouble)ww / 2);
+	agent.backLocBotLeft.y = 0;
+	agent.backLocBotRight.y = 0;
+	agent.frontLocTop.y = (int)ceil((GLdouble)wh / 24);
+
+	agent.velocity.speed = (int)ceil((GLdouble)wh / 24);
+	agent.velocity.direction = up;
+}
+
 void initFunc(void)
 {
 
@@ -157,6 +175,7 @@ void initFunc(void)
 	/* set clear color to black and clear window */
 
 	glClearColor(1.0, 1.0, 1.0, 1);
+	initAgent();
 }
 
 /* reshaping routine called whenever window is resized
@@ -183,6 +202,7 @@ void reshapeFunc(GLsizei w, GLsizei h)
 
 	ww = w;
 	wh = h;
+	initAgent();
 	glutPostRedisplay();
 }
 
@@ -192,6 +212,93 @@ void keyboardFunc(unsigned char key, int x, int y)
 	{
 		exit(0);
 	}
+	else if ((key == 'R') || (key == 'r'))
+	{
+		//TODO
+	}
+}
+
+void reverseAgent()
+{
+	if(agent.frontLocTop.y >= wh)
+	{
+		agent.backLocBotLeft.y = wh;
+		agent.backLocBotRight.y = wh;
+		agent.frontLocTop.y = wh - (int)ceil((GLdouble)wh / 24);
+		agent.velocity.direction = down;
+	}
+
+	else if (agent.frontLocTop.y <= 0)
+	{
+		agent.backLocBotLeft.y = 0;
+		agent.backLocBotRight.y = 0;
+		agent.frontLocTop.y = (int)ceil((GLdouble)wh / 24);
+		agent.velocity.direction = up;
+	}
+}
+
+void agentMoveUP()
+{
+	agent.backLocBotLeft.y += agent.velocity.speed;
+	agent.backLocBotRight.y += agent.velocity.speed;
+	agent.frontLocTop.y += agent.velocity.speed;
+	//printf("OpenGL version supported %d\n", agent.frontLocTop.y);
+
+
+	if(agent.frontLocTop.y >= wh)
+	{
+		printf("OpenGL version supported %d\n", agent.frontLocTop.y);
+		reverseAgent();
+	}
+
+	glutPostRedisplay();
+}
+
+void agentMoveDOWN()
+{
+	agent.backLocBotLeft.y -= agent.velocity.speed;
+	agent.backLocBotRight.y -= agent.velocity.speed;
+	agent.frontLocTop.y -= agent.velocity.speed;
+
+	if (agent.frontLocTop.y <= 0)
+	{
+		reverseAgent();
+	}
+
+	glutPostRedisplay();
+}
+
+void agentMoveLEFT()
+{
+	agent.backLocBotLeft.x -= agent.velocity.speed;
+	agent.backLocBotRight.x -= agent.velocity.speed;
+	agent.frontLocTop.x -= agent.velocity.speed;
+
+	if (agent.backLocBotLeft.x <= 0)
+	{
+		agent.backLocBotLeft.x += agent.velocity.speed;
+		agent.backLocBotRight.x += agent.velocity.speed;
+		agent.frontLocTop.x += agent.velocity.speed;
+		//return;
+	}
+
+	glutPostRedisplay();
+}
+
+void agentMoveRIGHT()
+{
+	agent.backLocBotLeft.x += agent.velocity.speed;
+	agent.backLocBotRight.x += agent.velocity.speed;
+	agent.frontLocTop.x += agent.velocity.speed;
+
+	if (agent.backLocBotRight.x >= ww)
+	{
+		agent.backLocBotLeft.x -= agent.velocity.speed;
+		agent.backLocBotRight.x -= agent.velocity.speed;
+		agent.frontLocTop.x -= agent.velocity.speed;
+	}
+
+	glutPostRedisplay();
 }
 
 // Callback routine for non-ASCII key entry.
@@ -200,19 +307,19 @@ void specialKeyInputFunc(int key, int x, int y)
 
 	if (key == GLUT_KEY_UP)
 	{
-		//TODO
+		agentMoveUP();
 	}
 	if (key == GLUT_KEY_DOWN)
 	{
-		//TODO
+		agentMoveDOWN();
 	}
 	if (key == GLUT_KEY_LEFT)
 	{
-		//TODO
+		agentMoveLEFT();
 	}
 	if (key == GLUT_KEY_RIGHT)
 	{
-		//TODO
+		agentMoveRIGHT();
 	}
 
 	glutPostRedisplay();
@@ -238,9 +345,9 @@ void fillCoinLocations(int topRoady)
 	Location coinLocation;
 	int allWidth;
 	allWidth = rand() % ww;
-	coinLocation.x = clamp(allWidth, ww/50, ww-ww/50);
+	coinLocation.x = clamp(allWidth, (int)ceil((GLdouble)ww / 50), ww- (int)ceil((GLdouble)ww / 50));
 
-	coinLocation.y = (topRoady + topRoady + wh / 24) / 2;
+	coinLocation.y = (topRoady + topRoady + (int)ceil((GLdouble)wh / 24)) / 2;
 	coinLocations.push_back(coinLocation);
 
 }
@@ -254,7 +361,7 @@ void fillVehicleLocations(int topRoady, int vehicleRotation)
 	else
 		vehicleLocation.x = ww;
 
-	vehicleLocation.y = (topRoady + topRoady + wh / 24) / 2;
+	vehicleLocation.y = (topRoady + topRoady + (int)ceil((GLdouble)wh / 24)) / 2;
 	vehicleLocations.push_back(vehicleLocation);
 
 }
@@ -271,7 +378,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 			int rightTapeofRoadx = ww / 50;
 			fillCoinLocations(topRoady);
 			fillVehicleLocations(topRoady, i);
-			topRoady += wh / 24;
+			topRoady += (int)ceil((GLdouble)wh / 24);
 
 
 			for (int j = 0; j < totalNumberOfTape; j++)
@@ -297,7 +404,7 @@ void drawRoads(int sideWalkNumber, int topSidewalky)
 			int rightTapeofRoadx = ww / 50;
 			fillCoinLocations(topRoady);
 			fillVehicleLocations(topRoady, i);
-			topRoady += wh / 24;
+			topRoady += (int)ceil((GLdouble)wh / 24);
 
 
 			for (int j = 0; j < totalNumberOfTape; j++)
@@ -334,9 +441,9 @@ void drawMap()
 	coinLocations.clear();
 	vehicleLocations.clear();
 	int bottomSidewalky, topSidewalky, totalRoadLengthy;
-	totalRoadLengthy = wh - wh / 4;
+	totalRoadLengthy = wh - (int)ceil((GLdouble )wh / 4);
 	bottomSidewalky = 0;
-	topSidewalky = wh / 24;
+	topSidewalky = (int)ceil((GLdouble)wh / 24);
 	for (int i = 1; i <= 6; i++)
 	{
 		drawSideWalks(bottomSidewalky, topSidewalky);
@@ -344,16 +451,27 @@ void drawMap()
 
 		if (i==1 || i == 3 || i == 5)
 		{
-			bottomSidewalky = topSidewalky + (4*totalRoadLengthy) / 18;
-			topSidewalky = bottomSidewalky + wh / 24;
+			bottomSidewalky = topSidewalky + (int)ceil((GLdouble)(4*totalRoadLengthy) / 18);
+			topSidewalky = bottomSidewalky + (int)ceil((GLdouble)wh / 24);
 		}
 		else
 		{
-			bottomSidewalky = topSidewalky + (3*totalRoadLengthy) / 18;
-			topSidewalky = bottomSidewalky + wh / 24;
+			bottomSidewalky = topSidewalky + (int)ceil((GLdouble)(3*totalRoadLengthy) / 18);
+			topSidewalky = bottomSidewalky + (int)floor((GLdouble)wh / 24);
 		}
 
 	}
+}
+
+void drawAgent()
+{
+	Color color = giveColor(black);
+	glColor3ub(color.r, color.g, color.b);
+	glBegin(GL_POLYGON);
+		glVertex2f(agent.backLocBotLeft.x, agent.backLocBotLeft.y);
+		glVertex2f(agent.backLocBotRight.x, agent.backLocBotRight.y);
+		glVertex2f(agent.frontLocTop.x, agent.frontLocTop.y);
+	glEnd();
 }
 
 void drawCars()
@@ -396,8 +514,8 @@ void drawCoins()
 		for (int j = 0; j < 30; ++j)
 		{
 			angle = 2 * PI * j / 30;
-			glVertex2f((float)coins[i].center.x + cos(angle) * ww/100, 
-				(float)coins[i].center.y + sin(angle) * ww/100);
+			glVertex2f((float)coins[i].center.x + cos(angle) * (int)ceil((GLdouble)ww / 100),
+				(float)coins[i].center.y + sin(angle) * (int)ceil((GLdouble)ww / 100));
 		}
 
 		glEnd();
@@ -411,6 +529,7 @@ void displayFunc(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT);
 	drawMap();
+	drawAgent();
 	drawCars();
 	drawTrucks();
 	drawCoins();
@@ -443,33 +562,33 @@ void generateVehicle(int id)
 		{
 			vehicleBackBot.x = randomLocation.x;
 			vehicleBackTop.x = randomLocation.x;
-			vehicleFrontBot.x = wh / 48;
-			vehicleFrontTop.x = wh / 48;
+			vehicleFrontBot.x = (int)ceil((GLdouble)wh / 48);
+			vehicleFrontTop.x = (int)ceil((GLdouble)wh / 48);
 			car.velocity.direction = right;
 		}
 		else
 		{
 			vehicleBackBot.x = randomLocation.x;
 			vehicleBackTop.x = randomLocation.x;
-			vehicleFrontBot.x = ww - wh / 48;
-			vehicleFrontTop.x = ww - wh / 48;
+			vehicleFrontBot.x = ww - (int)ceil((GLdouble)wh / 48);
+			vehicleFrontTop.x = ww - (int)ceil((GLdouble)wh / 48);
 			car.velocity.direction = left;
 		}
 
-		vehicleBackBot.y = randomLocation.y - wh / 96;
+		vehicleBackBot.y = randomLocation.y - (int)ceil((GLdouble)wh / 96);
 		
-		vehicleBackTop.y = randomLocation.y + wh / 96;
+		vehicleBackTop.y = randomLocation.y + (int)ceil((GLdouble)wh / 96);
 		
-		vehicleFrontBot.y = randomLocation.y - wh / 96;
+		vehicleFrontBot.y = randomLocation.y - (int)ceil((GLdouble)wh / 96);
 		
-		vehicleFrontTop.y = randomLocation.y + wh / 96;
+		vehicleFrontTop.y = randomLocation.y + (int)ceil((GLdouble)wh / 96);
 		
 
 		car.backLocBot = vehicleBackBot;
 		car.backLocTop = vehicleBackTop;
 		car.frontLocBot = vehicleFrontBot;
 		car.frontLocTop = vehicleFrontTop;
-		car.velocity.speed = ww / 200;
+		car.velocity.speed = (int)ceil((GLdouble)ww / 200);
 	
 		car.color = randomColor;
 		cars.push_back(car);
@@ -481,32 +600,32 @@ void generateVehicle(int id)
 		{
 			vehicleBackBot.x = randomLocation.x;
 			vehicleBackTop.x = randomLocation.x;
-			vehicleFrontBot.x = wh / 12;
-			vehicleFrontTop.x = wh / 12;
+			vehicleFrontBot.x = (int)ceil((GLdouble)wh / 12);
+			vehicleFrontTop.x = (int)ceil((GLdouble)wh / 12);
 			truck.velocity.direction = right;
 		}
 		else
 		{
 			vehicleBackBot.x = randomLocation.x;
 			vehicleBackTop.x = randomLocation.x;
-			vehicleFrontBot.x = ww - wh / 12;
-			vehicleFrontTop.x = ww - wh / 12; //height * 4 = width
+			vehicleFrontBot.x = ww - (int)ceil((GLdouble)wh / 12);
+			vehicleFrontTop.x = ww - (int)ceil((GLdouble)wh / 12); //height * 4 = width
 			truck.velocity.direction = left;
 		}
 
-		vehicleBackBot.y = randomLocation.y - wh / 96;
+		vehicleBackBot.y = randomLocation.y - (int)ceil((GLdouble)wh / 96);
 
-		vehicleBackTop.y = randomLocation.y + wh / 96;
+		vehicleBackTop.y = randomLocation.y + (int)ceil((GLdouble)wh / 96);
 
-		vehicleFrontBot.y = randomLocation.y - wh / 96;
+		vehicleFrontBot.y = randomLocation.y - (int)ceil((GLdouble)wh / 96);
 
-		vehicleFrontTop.y = randomLocation.y + wh / 96;
+		vehicleFrontTop.y = randomLocation.y + (int)ceil((GLdouble)wh / 96);
 		
 		truck.backLocBot = vehicleBackBot;
 		truck.backLocTop = vehicleBackTop;
 		truck.frontLocBot = vehicleFrontBot;
 		truck.frontLocTop = vehicleFrontTop;
-		truck.velocity.speed = ww / 200;
+		truck.velocity.speed = (int)ceil((GLdouble)ww / 200);
 
 		truck.color = randomColor;
 		trucks.push_back(truck);
