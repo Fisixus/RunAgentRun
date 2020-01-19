@@ -88,6 +88,10 @@ std::vector<Location> coinLocations;
 Agent agent;
 //Location agentLocations[3];
 
+bool isPaused = false;
+bool framePerMove = false;
+int frameTime = 100;
+
 Color giveColor(Colors colors) 
 {
 	Color color;
@@ -270,6 +274,7 @@ void agentMoveDOWN()
 
 void agentMoveLEFT()
 {
+	agent.velocity.direction = left;
 	agent.backLocBotLeft.x -= agent.velocity.speed;
 	agent.backLocBotRight.x -= agent.velocity.speed;
 	agent.frontLocTop.x -= agent.velocity.speed;
@@ -279,7 +284,6 @@ void agentMoveLEFT()
 		agent.backLocBotLeft.x += agent.velocity.speed;
 		agent.backLocBotRight.x += agent.velocity.speed;
 		agent.frontLocTop.x += agent.velocity.speed;
-		//return;
 	}
 
 	glutPostRedisplay();
@@ -287,6 +291,7 @@ void agentMoveLEFT()
 
 void agentMoveRIGHT()
 {
+	agent.velocity.direction = right;
 	agent.backLocBotLeft.x += agent.velocity.speed;
 	agent.backLocBotRight.x += agent.velocity.speed;
 	agent.frontLocTop.x += agent.velocity.speed;
@@ -304,13 +309,22 @@ void agentMoveRIGHT()
 // Callback routine for non-ASCII key entry.
 void specialKeyInputFunc(int key, int x, int y)
 {
+	if (isPaused) return;
 
 	if (key == GLUT_KEY_UP)
 	{
+		if (agent.velocity.direction == down)
+		{
+			//TODO		
+		}
 		agentMoveUP();
 	}
 	if (key == GLUT_KEY_DOWN)
 	{
+		if (agent.velocity.direction == up) 
+		{
+			//TODO		
+		}
 		agentMoveDOWN();
 	}
 	if (key == GLUT_KEY_LEFT)
@@ -323,21 +337,6 @@ void specialKeyInputFunc(int key, int x, int y)
 	}
 
 	glutPostRedisplay();
-}
-
-
-void mouseFunc(int btn, int state, int x, int y)
-{
-	if (btn == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) 
-	{
-		//TODO
-
-	}
-	if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN) 
-	{
-
-		//TODO
-	}
 }
 
 void fillCoinLocations(int topRoady)
@@ -451,13 +450,13 @@ void drawMap()
 
 		if (i==1 || i == 3 || i == 5)
 		{
-			bottomSidewalky = topSidewalky + (int)ceil((GLdouble)(4*totalRoadLengthy) / 18);
-			topSidewalky = bottomSidewalky + (int)ceil((GLdouble)wh / 24);
+			bottomSidewalky = topSidewalky + (int)ceil((GLdouble)(4*totalRoadLengthy) / (GLdouble)18);
+			topSidewalky = bottomSidewalky + (int)ceil((GLdouble)wh / (GLdouble)24);
 		}
 		else
 		{
-			bottomSidewalky = topSidewalky + (int)ceil((GLdouble)(3*totalRoadLengthy) / 18);
-			topSidewalky = bottomSidewalky + (int)floor((GLdouble)wh / 24);
+			bottomSidewalky = topSidewalky + (int)ceil(((GLdouble)3 * (GLdouble)totalRoadLengthy) / (GLdouble)18);
+			topSidewalky = bottomSidewalky + (int)floor((GLdouble)wh / (GLdouble)24);
 		}
 
 	}
@@ -539,6 +538,11 @@ void displayFunc(void)
 
 void generateVehicle(int id) 
 {
+	if (isPaused && !framePerMove)
+	{		
+		return;
+	}
+
 	Color randomColor = giveColor(static_cast<Colors>(rand() % 4)); // It gives random color to vehicle
 
 	Location vehicleBackBot, vehicleBackTop , vehicleFrontBot, vehicleFrontTop;
@@ -630,13 +634,18 @@ void generateVehicle(int id)
 		truck.color = randomColor;
 		trucks.push_back(truck);
 	}
-
-	glutTimerFunc(1000 , generateVehicle, 0);
+	if(!framePerMove)
+		glutTimerFunc(1000 , generateVehicle, 0);
 	glutPostRedisplay();
 }
 
 void moveVehicle(int id)
 {
+	if (isPaused && !framePerMove)
+	{
+		return;
+	}
+
 	for (int i = 0; i < trucks.size(); i++)
 	{
 		if(trucks[i].backLocBot.x == 1 && trucks[i].velocity.direction == left) 
@@ -687,13 +696,18 @@ void moveVehicle(int id)
 			cars[i].backLocTop.x -= cars[i].velocity.speed;
 		}
 	}
-
-	glutTimerFunc(20, moveVehicle, 0);
+	if(!framePerMove)
+		glutTimerFunc(20, moveVehicle, 0);
 	glutPostRedisplay();
 }
 
 void generateCoin(int id)
 {
+	if(isPaused && !framePerMove)
+	{
+		return;
+	}
+
 	if(coins.size() == 8)
 	{
 		coins.erase(coins.begin());
@@ -708,9 +722,55 @@ void generateCoin(int id)
 	coin.center = randomLocation;
 	coin.color = giveColor(yellow);
 	coins.push_back(coin);
-
-	glutTimerFunc(2000, generateCoin, 2);
+	if(!framePerMove)
+		glutTimerFunc(2000, generateCoin, 2);
 	glutPostRedisplay();
+}
+
+void mouseFunc(int btn, int state, int x, int y)
+{
+	if (btn == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
+	{
+		if (!isPaused) isPaused = true;
+		else
+		{
+			framePerMove = true;
+			frameTime += 100;
+			if(frameTime == 2000)
+			{
+				generateVehicle(0);
+				generateVehicle(0);
+				generateVehicle(0);
+				generateVehicle(0);
+				generateVehicle(0);
+				generateVehicle(0);
+				generateVehicle(0);			
+				generateCoin(2);
+				frameTime = 100;
+			}			
+			moveVehicle(1);
+			
+		}
+
+	}
+	if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+	{
+		framePerMove = false;
+		isPaused = !isPaused;
+		if(!isPaused)
+		{
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(1000, generateVehicle, 0);
+			glutTimerFunc(20, moveVehicle, 1);
+			glutTimerFunc(2000, generateCoin, 2);
+		
+		}
+	}
 }
 
 int main(int argc, char** argv)
