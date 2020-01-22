@@ -35,6 +35,13 @@ typedef struct {
 } Location;
 
 typedef struct {
+	Location leftLocTop;
+	Location rightLocTop;
+	Location leftLocBot;
+	Location rightLocBot;
+} ColliderBox;
+
+typedef struct {
 	GLubyte r;
 	GLubyte g;
 	GLubyte b;
@@ -51,6 +58,9 @@ typedef struct {
 	Location frontLocTop;
 	Color color;
 	Velocity velocity;
+	int point;
+	int roadNumber;
+	ColliderBox colliderbox;
 } Agent;
 
 typedef struct {
@@ -60,6 +70,7 @@ typedef struct {
 	Location backLocTop;
 	Color color;
 	Velocity velocity;
+	int roadNumber;
 } Truck;
 
 typedef struct {
@@ -69,11 +80,13 @@ typedef struct {
 	Location backLocTop;
 	Color color;
 	Velocity velocity;
+	int roadNumber;
 } Car;
 
 typedef struct {
 	Location center;
 	Color color;
+	ColliderBox colliderBox;
 } Coin;
 
 #define PI 3.14159265
@@ -85,12 +98,72 @@ std::vector<Coin> coins;
 std::vector<Location> vehicleLocations;
 std::vector<Location> coinLocations;
 
+std::vector<Car> crashChanceCars;
+std::vector<Truck> crashChanceTrucks;
+
 Agent agent;
 //Location agentLocations[3];
 
 bool isPaused = false;
 bool framePerMove = false;
+bool isAgentMoved = true;
 int frameTime = 100;
+
+int findRoadNumber(int h)
+{
+	int roadNumber = 1;
+	if ((2 * wh / 24) - h > 0) roadNumber = 2;
+	else if ((3 * wh / 24) - h > 0) roadNumber = 3;
+	else if ((4 * wh / 24) - h > 0) roadNumber = 4;
+	else if ((5 * wh / 24) - h > 0) roadNumber = 5;
+
+	else if ((7 * wh / 24) - h > 0) roadNumber = 7;
+	else if ((8 * wh / 24) - h > 0) roadNumber = 8;
+	else if ((9 * wh / 24) - h > 0) roadNumber = 9;
+
+	else if ((11 * wh / 24) - h > 0) roadNumber = 11;
+	else if ((12 * wh / 24) - h > 0) roadNumber = 12;
+	else if ((13 * wh / 24) - h > 0) roadNumber = 13;
+	else if ((14 * wh / 24) - h > 0) roadNumber = 14;
+
+	else if ((16 * wh / 24) - h > 0) roadNumber = 16;
+	else if ((17 * wh / 24) - h > 0) roadNumber = 17;
+	else if ((18 * wh / 24) - h > 0) roadNumber = 18;
+
+	else if ((20 * wh / 24) - h > 0) roadNumber = 20;
+	else if ((21 * wh / 24) - h > 0) roadNumber = 21;
+	else if ((22 * wh / 24) - h > 0) roadNumber = 22;
+	else if ((23 * wh / 24) - h > 0) roadNumber = 23;
+
+	return roadNumber;
+
+
+}
+
+void findCrashChanceVehicles()
+{
+	crashChanceTrucks.clear();
+	crashChanceCars.clear();
+
+
+	for(int i=0;i<cars.size();i++)
+	{
+		if(agent.roadNumber == cars[i].roadNumber)
+		{
+			crashChanceCars.push_back(cars[i]);
+		}
+	
+	}
+
+	for (int i = 0; i < trucks.size(); i++)
+	{
+		if (agent.roadNumber == trucks[i].roadNumber)
+		{
+			crashChanceTrucks.push_back(trucks[i]);
+		}
+
+	}
+}
 
 Color giveColor(Colors colors) 
 {
@@ -152,15 +225,27 @@ constexpr const T& clamp(const T& v, const T& lo, const T& hi)
 
 void initAgent()
 {
-	agent.backLocBotLeft.x = (int)ceil((GLdouble)ww / 2) - (int)ceil((GLdouble)wh / 48);
-	agent.backLocBotRight.x = (int)ceil((GLdouble)ww / 2) + (int)ceil((GLdouble)wh / 48);
+	agent.backLocBotLeft.x = (int)ceil((GLdouble)ww / 2) - (int)ceil((GLdouble)wh / 80);
+	agent.backLocBotRight.x = (int)ceil((GLdouble)ww / 2) + (int)ceil((GLdouble)wh / 80);
 	agent.frontLocTop.x = (int)ceil((GLdouble)ww / 2);
 	agent.backLocBotLeft.y = 0;
 	agent.backLocBotRight.y = 0;
-	agent.frontLocTop.y = (int)ceil((GLdouble)wh / 24);
+	agent.frontLocTop.y = (int)ceil((GLdouble)wh / 24); // change with 28 later
+
+	agent.colliderbox.leftLocBot.x = (int)ceil((GLdouble)ww / 2) - (int)ceil((GLdouble)wh / 80);
+	agent.colliderbox.rightLocBot.x = (int)ceil((GLdouble)ww / 2) + (int)ceil((GLdouble)wh / 80);
+	agent.colliderbox.leftLocTop.x = (int)ceil((GLdouble)ww / 2) - (int)ceil((GLdouble)wh / 80);
+	agent.colliderbox.rightLocTop.x = (int)ceil((GLdouble)ww / 2) + (int)ceil((GLdouble)wh / 80);
+
+	agent.colliderbox.leftLocBot.y = 0;
+	agent.colliderbox.rightLocBot.y = 0;
+	agent.colliderbox.leftLocTop.y = (int)ceil((GLdouble)wh / 24);
+	agent.colliderbox.rightLocTop.y = (int)ceil((GLdouble)wh / 24);
 
 	agent.velocity.speed = (int)ceil((GLdouble)wh / 24);
 	agent.velocity.direction = up;
+	agent.point = 0;
+	agent.roadNumber = 1;
 }
 
 void initFunc(void)
@@ -185,12 +270,16 @@ void initFunc(void)
 /* reshaping routine called whenever window is resized
 or moved */
 
-void reshapeFunc(GLsizei w, GLsizei h)
+void resetGame()
 {
 	coins.clear();
 	cars.clear();
 	trucks.clear();
+	initAgent();
+}
 
+void reshapeFunc(GLsizei w, GLsizei h)
+{
 	/* adjust clipping box */
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -206,7 +295,7 @@ void reshapeFunc(GLsizei w, GLsizei h)
 
 	ww = w;
 	wh = h;
-	initAgent();
+	resetGame();
 	glutPostRedisplay();
 }
 
@@ -218,31 +307,120 @@ void keyboardFunc(unsigned char key, int x, int y)
 	}
 	else if ((key == 'R') || (key == 'r'))
 	{
-		//TODO
+		resetGame();
 	}
+}
+
+void coinCollectControl()
+{
+	for(int i = 0; i < coins.size(); i++)
+	{
+		if (coins[i].colliderBox.leftLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
+			coins[i].colliderBox.leftLocBot.x + ww / 150  > agent.colliderbox.leftLocBot.x &&
+			coins[i].colliderBox.leftLocBot.y < agent.colliderbox.leftLocBot.y + wh/24 &&
+			coins[i].colliderBox.leftLocBot.y + ww / 150 > agent.colliderbox.leftLocBot.y
+			)
+		{
+			//TODO
+			//resetGame();
+		}
+	}
+
+
+}
+
+//Collision Control
+bool crashControl()
+{
+	findCrashChanceVehicles();
+	//printf("OpenGL version supported %d\n", deadZoneCars[i].roadNumber);
+	for (int i = 0; i < crashChanceCars.size(); i++)
+	{
+		if(crashChanceCars[i].velocity.direction == right)
+		{
+			if (crashChanceCars[i].backLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
+				crashChanceCars[i].backLocBot.x + wh / 48 > agent.colliderbox.leftLocBot.x)
+			{
+				//TODO
+				//resetGame();
+			}		
+		}
+		else if(crashChanceCars[i].velocity.direction == left)
+		{
+			if (crashChanceCars[i].backLocBot.x > agent.colliderbox.rightLocBot.x - wh / 40 &&
+				crashChanceCars[i].backLocBot.x - wh / 48 < agent.colliderbox.rightLocBot.x)
+			{
+				//TODO
+				//resetGame();
+			}
+		}
+	}
+
+	for (int i = 0; i < crashChanceTrucks.size(); i++)
+	{
+		if (crashChanceTrucks[i].velocity.direction == right)
+		{
+			if (crashChanceTrucks[i].backLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
+				crashChanceTrucks[i].backLocBot.x + wh / 12 > agent.colliderbox.leftLocBot.x)
+			{
+				//TODO
+				//resetGame();
+			}
+		}
+		else if (crashChanceTrucks[i].velocity.direction == left)
+		{
+			if (crashChanceTrucks[i].backLocBot.x > agent.colliderbox.rightLocBot.x - wh / 40 &&
+				crashChanceTrucks[i].backLocBot.x - wh / 12 < agent.colliderbox.rightLocBot.x)
+			{
+				//TODO
+				//resetGame();
+			}
+		}
+	}
+
+
+	return false;
 }
 
 void reverseAgent()
 {
 	if(agent.frontLocTop.y >= wh)
 	{
+		agent.colliderbox.leftLocBot.y = wh;
+		agent.colliderbox.rightLocBot.y = wh;
+		agent.colliderbox.leftLocTop.y = wh - (int)ceil((GLdouble)wh / 28);
+		agent.colliderbox.rightLocTop.y = wh - (int)ceil((GLdouble)wh / 28);
+
 		agent.backLocBotLeft.y = wh;
 		agent.backLocBotRight.y = wh;
-		agent.frontLocTop.y = wh - (int)ceil((GLdouble)wh / 24);
+		agent.frontLocTop.y = wh - (int)ceil((GLdouble)wh / 28);
 		agent.velocity.direction = down;
 	}
 
 	else if (agent.frontLocTop.y <= 0)
 	{
+		agent.colliderbox.leftLocBot.y = 0;
+		agent.colliderbox.rightLocBot.y = 0;
+		agent.colliderbox.leftLocTop.y = (int)ceil((GLdouble)wh / 28);
+		agent.colliderbox.rightLocTop.y = (int)ceil((GLdouble)wh / 28);
+
 		agent.backLocBotLeft.y = 0;
 		agent.backLocBotRight.y = 0;
-		agent.frontLocTop.y = (int)ceil((GLdouble)wh / 24);
+		agent.frontLocTop.y = (int)ceil((GLdouble)wh / 28);
 		agent.velocity.direction = up;
 	}
 }
 
 void agentMoveUP()
 {
+	agent.roadNumber++;
+	agent.velocity.direction = up;
+
+	agent.colliderbox.leftLocBot.y += agent.velocity.speed;
+	agent.colliderbox.rightLocBot.y += agent.velocity.speed;
+	agent.colliderbox.leftLocTop.y += agent.velocity.speed;
+	agent.colliderbox.rightLocTop.y += agent.velocity.speed;
+
 	agent.backLocBotLeft.y += agent.velocity.speed;
 	agent.backLocBotRight.y += agent.velocity.speed;
 	agent.frontLocTop.y += agent.velocity.speed;
@@ -251,7 +429,7 @@ void agentMoveUP()
 
 	if(agent.frontLocTop.y >= wh)
 	{
-		printf("OpenGL version supported %d\n", agent.frontLocTop.y);
+		//printf("OpenGL version supported %d\n", agent.frontLocTop.y);
 		reverseAgent();
 	}
 
@@ -260,6 +438,14 @@ void agentMoveUP()
 
 void agentMoveDOWN()
 {
+	agent.roadNumber--;
+	agent.velocity.direction = down;
+
+	agent.colliderbox.leftLocBot.y -= agent.velocity.speed;
+	agent.colliderbox.rightLocBot.y -= agent.velocity.speed;
+	agent.colliderbox.leftLocTop.y -= agent.velocity.speed;
+	agent.colliderbox.rightLocTop.y -= agent.velocity.speed;
+
 	agent.backLocBotLeft.y -= agent.velocity.speed;
 	agent.backLocBotRight.y -= agent.velocity.speed;
 	agent.frontLocTop.y -= agent.velocity.speed;
@@ -274,7 +460,11 @@ void agentMoveDOWN()
 
 void agentMoveLEFT()
 {
-	agent.velocity.direction = left;
+	agent.colliderbox.leftLocBot.x -= agent.velocity.speed;
+	agent.colliderbox.rightLocBot.x -= agent.velocity.speed;
+	agent.colliderbox.leftLocTop.x -= agent.velocity.speed;
+	agent.colliderbox.rightLocTop.x -= agent.velocity.speed;
+
 	agent.backLocBotLeft.x -= agent.velocity.speed;
 	agent.backLocBotRight.x -= agent.velocity.speed;
 	agent.frontLocTop.x -= agent.velocity.speed;
@@ -291,7 +481,11 @@ void agentMoveLEFT()
 
 void agentMoveRIGHT()
 {
-	agent.velocity.direction = right;
+	agent.colliderbox.leftLocBot.x += agent.velocity.speed;
+	agent.colliderbox.rightLocBot.x += agent.velocity.speed;
+	agent.colliderbox.leftLocTop.x += agent.velocity.speed;
+	agent.colliderbox.rightLocTop.x += agent.velocity.speed;
+
 	agent.backLocBotLeft.x += agent.velocity.speed;
 	agent.backLocBotRight.x += agent.velocity.speed;
 	agent.frontLocTop.x += agent.velocity.speed;
@@ -309,13 +503,12 @@ void agentMoveRIGHT()
 // Callback routine for non-ASCII key entry.
 void specialKeyInputFunc(int key, int x, int y)
 {
-	if (isPaused) return;
-
+	if (!isAgentMoved) return;
 	if (key == GLUT_KEY_UP)
 	{
 		if (agent.velocity.direction == down)
 		{
-			//TODO		
+			//TODO		game over
 		}
 		agentMoveUP();
 	}
@@ -323,7 +516,7 @@ void specialKeyInputFunc(int key, int x, int y)
 	{
 		if (agent.velocity.direction == up) 
 		{
-			//TODO		
+			//TODO		game over
 		}
 		agentMoveDOWN();
 	}
@@ -335,7 +528,9 @@ void specialKeyInputFunc(int key, int x, int y)
 	{
 		agentMoveRIGHT();
 	}
-
+	if(isPaused)
+		isAgentMoved = false;
+	coinCollectControl();
 	glutPostRedisplay();
 }
 
@@ -513,8 +708,8 @@ void drawCoins()
 		for (int j = 0; j < 30; ++j)
 		{
 			angle = 2 * PI * j / 30;
-			glVertex2f((float)coins[i].center.x + cos(angle) * (int)ceil((GLdouble)ww / 100),
-				(float)coins[i].center.y + sin(angle) * (int)ceil((GLdouble)ww / 100));
+			glVertex2f(coins[i].center.x + cos(angle) * (int)ceil((GLdouble)ww / 150),
+				coins[i].center.y + sin(angle) * (int)ceil((GLdouble)ww / 150));
 		}
 
 		glEnd();
@@ -538,6 +733,8 @@ void displayFunc(void)
 
 void generateVehicle(int id) 
 {
+	if (crashControl()) return;
+
 	if (isPaused && !framePerMove)
 	{		
 		return;
@@ -595,6 +792,8 @@ void generateVehicle(int id)
 		car.velocity.speed = (int)ceil((GLdouble)ww / 200);
 	
 		car.color = randomColor;
+		car.roadNumber = findRoadNumber(car.frontLocTop.y);
+
 		cars.push_back(car);
 	}
 
@@ -631,6 +830,8 @@ void generateVehicle(int id)
 		truck.frontLocTop = vehicleFrontTop;
 		truck.velocity.speed = (int)ceil((GLdouble)ww / 200);
 
+		truck.roadNumber = findRoadNumber(truck.frontLocTop.y);
+
 		truck.color = randomColor;
 		trucks.push_back(truck);
 	}
@@ -641,6 +842,8 @@ void generateVehicle(int id)
 
 void moveVehicle(int id)
 {
+	if (crashControl()) return;
+
 	if (isPaused && !framePerMove)
 	{
 		return;
@@ -703,6 +906,8 @@ void moveVehicle(int id)
 
 void generateCoin(int id)
 {
+	if (crashControl()) return;
+
 	if(isPaused && !framePerMove)
 	{
 		return;
@@ -721,6 +926,17 @@ void generateCoin(int id)
 	}
 	coin.center = randomLocation;
 	coin.color = giveColor(yellow);
+
+	coin.colliderBox.leftLocBot.x = coin.center.x - ww / 150;
+	coin.colliderBox.rightLocBot.x = coin.center.x + ww / 150;
+	coin.colliderBox.leftLocTop.x = coin.center.x - ww / 150;
+	coin.colliderBox.rightLocTop.x = coin.center.x + ww / 150;
+
+	coin.colliderBox.leftLocBot.y = coin.center.y - ww / 150;
+	coin.colliderBox.rightLocBot.y = coin.center.y - ww / 150;
+	coin.colliderBox.leftLocTop.y = coin.center.y + ww / 150;
+	coin.colliderBox.rightLocTop.y = coin.center.y + ww / 150;
+
 	coins.push_back(coin);
 	if(!framePerMove)
 		glutTimerFunc(2000, generateCoin, 2);
@@ -731,6 +947,7 @@ void mouseFunc(int btn, int state, int x, int y)
 {
 	if (btn == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
 	{
+		isAgentMoved = true;
 		if (!isPaused) isPaused = true;
 		else
 		{
@@ -756,6 +973,7 @@ void mouseFunc(int btn, int state, int x, int y)
 	if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
 	{
 		framePerMove = false;
+		isAgentMoved = false;
 		isPaused = !isPaused;
 		if(!isPaused)
 		{
@@ -768,7 +986,7 @@ void mouseFunc(int btn, int state, int x, int y)
 			glutTimerFunc(1000, generateVehicle, 0);
 			glutTimerFunc(20, moveVehicle, 1);
 			glutTimerFunc(2000, generateCoin, 2);
-		
+			isAgentMoved = true;
 		}
 	}
 }
