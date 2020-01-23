@@ -17,6 +17,7 @@ enum Colors {
 	purple,
 	blue,
 	yellow,
+	orange,
 	white,
 	black,
 	grey
@@ -107,6 +108,7 @@ Agent agent;
 bool isPaused = false;
 bool framePerMove = false;
 bool isAgentMoved = true;
+bool gameOver = false;
 int frameTime = 100;
 
 int findRoadNumber(int h)
@@ -189,6 +191,11 @@ Color giveColor(Colors colors)
 		color.g = (GLubyte)255;
 		color.b = (GLubyte)0;
 		break;
+	case orange:
+		color.r = (GLubyte)255;
+		color.g = (GLubyte)140;
+		color.b = (GLubyte)0;
+		break;
 	case purple:
 		color.r = (GLubyte)238;
 		color.g = (GLubyte)130;
@@ -230,7 +237,7 @@ void initAgent()
 	agent.frontLocTop.x = (int)ceil((GLdouble)ww / 2);
 	agent.backLocBotLeft.y = 0;
 	agent.backLocBotRight.y = 0;
-	agent.frontLocTop.y = (int)ceil((GLdouble)wh / 24); // change with 28 later
+	agent.frontLocTop.y = (int)ceil((GLdouble)wh / 28); 
 
 	agent.colliderbox.leftLocBot.x = (int)ceil((GLdouble)ww / 2) - (int)ceil((GLdouble)wh / 80);
 	agent.colliderbox.rightLocBot.x = (int)ceil((GLdouble)ww / 2) + (int)ceil((GLdouble)wh / 80);
@@ -239,8 +246,8 @@ void initAgent()
 
 	agent.colliderbox.leftLocBot.y = 0;
 	agent.colliderbox.rightLocBot.y = 0;
-	agent.colliderbox.leftLocTop.y = (int)ceil((GLdouble)wh / 24);
-	agent.colliderbox.rightLocTop.y = (int)ceil((GLdouble)wh / 24);
+	agent.colliderbox.leftLocTop.y = (int)ceil((GLdouble)wh / 28);
+	agent.colliderbox.rightLocTop.y = (int)ceil((GLdouble)wh / 28);
 
 	agent.velocity.speed = (int)ceil((GLdouble)wh / 24);
 	agent.velocity.direction = up;
@@ -267,62 +274,34 @@ void initFunc(void)
 	initAgent();
 }
 
-/* reshaping routine called whenever window is resized
-or moved */
-
-void resetGame()
-{
-	coins.clear();
-	cars.clear();
-	trucks.clear();
-	initAgent();
-}
-
-void reshapeFunc(GLsizei w, GLsizei h)
-{
-	/* adjust clipping box */
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluOrtho2D(0.0, (GLdouble)w, 0.0, (GLdouble)h);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	/* adjust viewport and clear */
-
-	glViewport(0, 0, w, h);
-
-	/* set global size for use by drawing routine */
-
-	ww = w;
-	wh = h;
-	resetGame();
-	glutPostRedisplay();
-}
-
-void keyboardFunc(unsigned char key, int x, int y)
-{
-	if ((key == 'Q') || (key == 'q')) 
-	{
-		exit(0);
-	}
-	else if ((key == 'R') || (key == 'r'))
-	{
-		resetGame();
-	}
-}
-
-void coinCollectControl()
+void coinCollectionControl()
 {
 	for(int i = 0; i < coins.size(); i++)
 	{
-		if (coins[i].colliderBox.leftLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
-			coins[i].colliderBox.leftLocBot.x + ww / 150  > agent.colliderbox.leftLocBot.x &&
-			coins[i].colliderBox.leftLocBot.y < agent.colliderbox.leftLocBot.y + wh/24 &&
-			coins[i].colliderBox.leftLocBot.y + ww / 150 > agent.colliderbox.leftLocBot.y
-			)
+		if(agent.velocity.direction == up)
 		{
-			//TODO
-			//resetGame();
+			if (coins[i].colliderBox.leftLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
+				coins[i].colliderBox.leftLocBot.x + ww / 150  > agent.colliderbox.leftLocBot.x &&
+				coins[i].colliderBox.leftLocBot.y < agent.colliderbox.leftLocBot.y + wh / 28 &&
+				coins[i].colliderBox.leftLocBot.y + ww / 150 > agent.colliderbox.leftLocBot.y
+				)
+			{
+				//printf("OpenGL version supported %d\n", i);
+				agent.point += 5;
+				coins.erase(coins.begin() + i);
+			}
+		}
+		else if (agent.velocity.direction == down)
+		{
+			if (coins[i].colliderBox.leftLocBot.x > agent.colliderbox.leftLocBot.x - wh / 40 &&
+				coins[i].colliderBox.leftLocBot.x - ww / 150  < agent.colliderbox.leftLocBot.x &&
+				coins[i].colliderBox.leftLocBot.y > agent.colliderbox.leftLocBot.y - wh / 28 &&
+				coins[i].colliderBox.leftLocBot.y - ww / 150 < agent.colliderbox.leftLocBot.y
+				)
+			{
+				agent.point += 5;
+				coins.erase(coins.begin() + i);
+			}
 		}
 	}
 
@@ -330,7 +309,7 @@ void coinCollectControl()
 }
 
 //Collision Control
-bool crashControl()
+void crashControl()
 {
 	findCrashChanceVehicles();
 	//printf("OpenGL version supported %d\n", deadZoneCars[i].roadNumber);
@@ -341,8 +320,7 @@ bool crashControl()
 			if (crashChanceCars[i].backLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
 				crashChanceCars[i].backLocBot.x + wh / 48 > agent.colliderbox.leftLocBot.x)
 			{
-				//TODO
-				//resetGame();
+				gameOver = true;
 			}		
 		}
 		else if(crashChanceCars[i].velocity.direction == left)
@@ -350,8 +328,7 @@ bool crashControl()
 			if (crashChanceCars[i].backLocBot.x > agent.colliderbox.rightLocBot.x - wh / 40 &&
 				crashChanceCars[i].backLocBot.x - wh / 48 < agent.colliderbox.rightLocBot.x)
 			{
-				//TODO
-				//resetGame();
+				gameOver = true;
 			}
 		}
 	}
@@ -363,8 +340,7 @@ bool crashControl()
 			if (crashChanceTrucks[i].backLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
 				crashChanceTrucks[i].backLocBot.x + wh / 12 > agent.colliderbox.leftLocBot.x)
 			{
-				//TODO
-				//resetGame();
+				gameOver = true;
 			}
 		}
 		else if (crashChanceTrucks[i].velocity.direction == left)
@@ -372,19 +348,16 @@ bool crashControl()
 			if (crashChanceTrucks[i].backLocBot.x > agent.colliderbox.rightLocBot.x - wh / 40 &&
 				crashChanceTrucks[i].backLocBot.x - wh / 12 < agent.colliderbox.rightLocBot.x)
 			{
-				//TODO
-				//resetGame();
+				gameOver = true;
 			}
 		}
 	}
-
-
-	return false;
+	glutPostRedisplay();
 }
 
 void reverseAgent()
 {
-	if(agent.frontLocTop.y >= wh)
+	if(agent.roadNumber >= 24)
 	{
 		agent.colliderbox.leftLocBot.y = wh;
 		agent.colliderbox.rightLocBot.y = wh;
@@ -397,7 +370,7 @@ void reverseAgent()
 		agent.velocity.direction = down;
 	}
 
-	else if (agent.frontLocTop.y <= 0)
+	else if (agent.roadNumber <= 1)
 	{
 		agent.colliderbox.leftLocBot.y = 0;
 		agent.colliderbox.rightLocBot.y = 0;
@@ -416,6 +389,12 @@ void agentMoveUP()
 	agent.roadNumber++;
 	agent.velocity.direction = up;
 
+	if (agent.roadNumber >= 24)
+	{
+		reverseAgent();
+		return;
+	}
+
 	agent.colliderbox.leftLocBot.y += agent.velocity.speed;
 	agent.colliderbox.rightLocBot.y += agent.velocity.speed;
 	agent.colliderbox.leftLocTop.y += agent.velocity.speed;
@@ -426,13 +405,6 @@ void agentMoveUP()
 	agent.frontLocTop.y += agent.velocity.speed;
 	//printf("OpenGL version supported %d\n", agent.frontLocTop.y);
 
-
-	if(agent.frontLocTop.y >= wh)
-	{
-		//printf("OpenGL version supported %d\n", agent.frontLocTop.y);
-		reverseAgent();
-	}
-
 	glutPostRedisplay();
 }
 
@@ -440,6 +412,12 @@ void agentMoveDOWN()
 {
 	agent.roadNumber--;
 	agent.velocity.direction = down;
+
+	if (agent.roadNumber <= 1)
+	{
+		reverseAgent();
+		return;
+	}
 
 	agent.colliderbox.leftLocBot.y -= agent.velocity.speed;
 	agent.colliderbox.rightLocBot.y -= agent.velocity.speed;
@@ -450,10 +428,7 @@ void agentMoveDOWN()
 	agent.backLocBotRight.y -= agent.velocity.speed;
 	agent.frontLocTop.y -= agent.velocity.speed;
 
-	if (agent.frontLocTop.y <= 0)
-	{
-		reverseAgent();
-	}
+
 
 	glutPostRedisplay();
 }
@@ -503,21 +478,23 @@ void agentMoveRIGHT()
 // Callback routine for non-ASCII key entry.
 void specialKeyInputFunc(int key, int x, int y)
 {
-	if (!isAgentMoved) return;
+	if (!isAgentMoved || gameOver) return;
 	if (key == GLUT_KEY_UP)
 	{
 		if (agent.velocity.direction == down)
 		{
-			//TODO		game over
+			gameOver = true;
 		}
+		agent.point += 1;
 		agentMoveUP();
 	}
 	if (key == GLUT_KEY_DOWN)
 	{
 		if (agent.velocity.direction == up) 
 		{
-			//TODO		game over
+			gameOver = true;
 		}
+		agent.point += 1;
 		agentMoveDOWN();
 	}
 	if (key == GLUT_KEY_LEFT)
@@ -530,7 +507,7 @@ void specialKeyInputFunc(int key, int x, int y)
 	}
 	if(isPaused)
 		isAgentMoved = false;
-	coinCollectControl();
+	coinCollectionControl();
 	glutPostRedisplay();
 }
 
@@ -716,6 +693,43 @@ void drawCoins()
 	}
 }
 
+void bitMapString(float x, float y, char s[])
+{
+	int i = 0;
+	Color color = giveColor(orange);
+	glColor3ub(color.r, color.g, color.b);
+	glRasterPos2f(x, y);
+	while (s[i] != '\0') {
+		
+		glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, s[i]);
+		++i;
+	}
+}
+
+void drawGameOverScene()
+{
+	Color clr = giveColor(black);
+	glColor4f(clr.r, clr.g, clr.b, 250.0f);
+	glBegin(GL_POLYGON);
+
+		glVertex2f(0, wh / 2 + wh / 24);
+		glVertex2f(0, wh / 2 - ww / 24);
+		glVertex2f(ww, wh / 2 - ww / 24);
+		glVertex2f(ww, wh / 2 + wh / 24);
+
+	glEnd();
+	char myword[] = { 'G', 'A', 'M', 'E', ' ', 'O', 'V', 'E', 'R', '\0' };
+	bitMapString(ww / 2 - ww / 12, wh / 2, myword);
+	char myword2[] = { 'P', 'R', 'E', 'S', 'S', ' ', '\'', 'R', '\'', ' ', 'F', 'O', 'R', ' ', 'R', 'E', 'S', 'T', 'A', 'R', 'T', '\0' };
+	bitMapString(ww / 2 - ww / 12, wh / 2 - ww/25, myword2);
+}
+
+void drawPoint()
+{
+	char str[10];
+	sprintf_s(str, "%d", agent.point);
+	bitMapString(ww - ww/12, wh - wh/40, str);
+}
 
 /* display callback required by GLUT 3.0 */
 
@@ -727,13 +741,18 @@ void displayFunc(void)
 	drawCars();
 	drawTrucks();
 	drawCoins();
+
+	drawPoint();
+	if (gameOver) drawGameOverScene();
+
 	glFlush();
 	glutSwapBuffers();
 }
 
 void generateVehicle(int id) 
 {
-	if (crashControl()) return;
+	crashControl();
+	if (gameOver) return;
 
 	if (isPaused && !framePerMove)
 	{		
@@ -842,7 +861,8 @@ void generateVehicle(int id)
 
 void moveVehicle(int id)
 {
-	if (crashControl()) return;
+	crashControl();
+	if (gameOver) return;
 
 	if (isPaused && !framePerMove)
 	{
@@ -906,7 +926,8 @@ void moveVehicle(int id)
 
 void generateCoin(int id)
 {
-	if (crashControl()) return;
+	crashControl();
+	if (gameOver) return;
 
 	if(isPaused && !framePerMove)
 	{
@@ -990,6 +1011,65 @@ void mouseFunc(int btn, int state, int x, int y)
 		}
 	}
 }
+
+void resetGame()
+{
+	coins.clear();
+	cars.clear();
+	trucks.clear();
+	initAgent();
+	if(gameOver)
+	{
+		gameOver = false;
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(1000, generateVehicle, 0);
+		glutTimerFunc(20, moveVehicle, 1);
+		glutTimerFunc(2000, generateCoin, 2);
+	}
+}
+
+/* reshaping routine called whenever window is resized
+or moved */
+
+
+void reshapeFunc(GLsizei w, GLsizei h)
+{
+	/* adjust clipping box */
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0.0, (GLdouble)w, 0.0, (GLdouble)h);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	/* adjust viewport and clear */
+
+	glViewport(0, 0, w, h);
+
+	/* set global size for use by drawing routine */
+
+	ww = w;
+	wh = h;
+	resetGame();
+	glutPostRedisplay();
+}
+
+void keyboardFunc(unsigned char key, int x, int y)
+{
+	if ((key == 'Q') || (key == 'q'))
+	{
+		exit(0);
+	}
+	else if ((key == 'R') || (key == 'r'))
+	{
+		resetGame();
+	}
+}
+
 
 int main(int argc, char** argv)
 {
