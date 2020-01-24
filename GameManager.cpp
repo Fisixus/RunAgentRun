@@ -5,6 +5,7 @@ interfacing with a Window System */
 #include <stdlib.h>
 #include <vector>
 
+#include <windows.h>
 #include <GL/glut.h>
 
 /* globals */
@@ -257,7 +258,7 @@ void initAgent()
 
 void initFunc(void)
 {
-
+	PlaySound(TEXT("CityTraffic.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 	glViewport(0, 0, ww, wh);
 
 	/* Pick 2D clipping window to match size of screen window
@@ -281,9 +282,9 @@ void coinCollectionControl()
 		if(agent.velocity.direction == up)
 		{
 			if (coins[i].colliderBox.leftLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
-				coins[i].colliderBox.leftLocBot.x + ww / 150  > agent.colliderbox.leftLocBot.x &&
+				coins[i].colliderBox.leftLocBot.x + ww / 75  > agent.colliderbox.leftLocBot.x &&
 				coins[i].colliderBox.leftLocBot.y < agent.colliderbox.leftLocBot.y + wh / 28 &&
-				coins[i].colliderBox.leftLocBot.y + ww / 150 > agent.colliderbox.leftLocBot.y
+				coins[i].colliderBox.leftLocBot.y + ww / 75 > agent.colliderbox.leftLocBot.y
 				)
 			{
 				//printf("OpenGL version supported %d\n", i);
@@ -294,9 +295,9 @@ void coinCollectionControl()
 		else if (agent.velocity.direction == down)
 		{
 			if (coins[i].colliderBox.leftLocBot.x > agent.colliderbox.leftLocBot.x - wh / 40 &&
-				coins[i].colliderBox.leftLocBot.x - ww / 150  < agent.colliderbox.leftLocBot.x &&
+				coins[i].colliderBox.leftLocBot.x - ww / 75 < agent.colliderbox.leftLocBot.x &&
 				coins[i].colliderBox.leftLocBot.y > agent.colliderbox.leftLocBot.y - wh / 28 &&
-				coins[i].colliderBox.leftLocBot.y - ww / 150 < agent.colliderbox.leftLocBot.y
+				coins[i].colliderBox.leftLocBot.y - ww / 75 < agent.colliderbox.leftLocBot.y
 				)
 			{
 				agent.point += 5;
@@ -319,7 +320,7 @@ void crashControl()
 		{
 			if (crashChanceCars[i].backLocBot.x < agent.colliderbox.leftLocBot.x + wh / 40 &&
 				crashChanceCars[i].backLocBot.x + wh / 48 > agent.colliderbox.leftLocBot.x)
-			{
+			{				
 				gameOver = true;
 			}		
 		}
@@ -435,20 +436,20 @@ void agentMoveDOWN()
 
 void agentMoveLEFT()
 {
-	agent.colliderbox.leftLocBot.x -= agent.velocity.speed;
-	agent.colliderbox.rightLocBot.x -= agent.velocity.speed;
-	agent.colliderbox.leftLocTop.x -= agent.velocity.speed;
-	agent.colliderbox.rightLocTop.x -= agent.velocity.speed;
+	agent.colliderbox.leftLocBot.x -= agent.velocity.speed / 6;
+	agent.colliderbox.rightLocBot.x -= agent.velocity.speed / 6;
+	agent.colliderbox.leftLocTop.x -= agent.velocity.speed / 6;
+	agent.colliderbox.rightLocTop.x -= agent.velocity.speed / 6;
 
-	agent.backLocBotLeft.x -= agent.velocity.speed;
-	agent.backLocBotRight.x -= agent.velocity.speed;
-	agent.frontLocTop.x -= agent.velocity.speed;
+	agent.backLocBotLeft.x -= agent.velocity.speed / 6;
+	agent.backLocBotRight.x -= agent.velocity.speed / 6;
+	agent.frontLocTop.x -= agent.velocity.speed / 6;
 
 	if (agent.backLocBotLeft.x <= 0)
 	{
-		agent.backLocBotLeft.x += agent.velocity.speed;
-		agent.backLocBotRight.x += agent.velocity.speed;
-		agent.frontLocTop.x += agent.velocity.speed;
+		agent.backLocBotLeft.x += agent.velocity.speed / 6;
+		agent.backLocBotRight.x += agent.velocity.speed / 6;
+		agent.frontLocTop.x += agent.velocity.speed / 6;
 	}
 
 	glutPostRedisplay();
@@ -456,20 +457,20 @@ void agentMoveLEFT()
 
 void agentMoveRIGHT()
 {
-	agent.colliderbox.leftLocBot.x += agent.velocity.speed;
-	agent.colliderbox.rightLocBot.x += agent.velocity.speed;
-	agent.colliderbox.leftLocTop.x += agent.velocity.speed;
-	agent.colliderbox.rightLocTop.x += agent.velocity.speed;
+	agent.colliderbox.leftLocBot.x += agent.velocity.speed/6;
+	agent.colliderbox.rightLocBot.x += agent.velocity.speed / 6;
+	agent.colliderbox.leftLocTop.x += agent.velocity.speed / 6;
+	agent.colliderbox.rightLocTop.x += agent.velocity.speed / 6;
 
-	agent.backLocBotLeft.x += agent.velocity.speed;
-	agent.backLocBotRight.x += agent.velocity.speed;
-	agent.frontLocTop.x += agent.velocity.speed;
+	agent.backLocBotLeft.x += agent.velocity.speed / 6;
+	agent.backLocBotRight.x += agent.velocity.speed / 6;
+	agent.frontLocTop.x += agent.velocity.speed / 6;
 
 	if (agent.backLocBotRight.x >= ww)
 	{
-		agent.backLocBotLeft.x -= agent.velocity.speed;
-		agent.backLocBotRight.x -= agent.velocity.speed;
-		agent.frontLocTop.x -= agent.velocity.speed;
+		agent.backLocBotLeft.x -= agent.velocity.speed / 6;
+		agent.backLocBotRight.x -= agent.velocity.speed / 6;
+		agent.frontLocTop.x -= agent.velocity.speed / 6;
 	}
 
 	glutPostRedisplay();
@@ -708,6 +709,7 @@ void bitMapString(float x, float y, char s[])
 
 void drawGameOverScene()
 {
+	PlaySound(TEXT("SadTrombone.wav"), NULL, SND_FILENAME | SND_ASYNC);
 	Color clr = giveColor(black);
 	glColor4f(clr.r, clr.g, clr.b, 250.0f);
 	glBegin(GL_POLYGON);
@@ -854,8 +856,8 @@ void generateVehicle(int id)
 		truck.color = randomColor;
 		trucks.push_back(truck);
 	}
-	if(!framePerMove)
-		glutTimerFunc(1000 , generateVehicle, 0);
+	if (!framePerMove)
+		glutTimerFunc(1000, generateVehicle, 0);
 	glutPostRedisplay();
 }
 
@@ -866,6 +868,7 @@ void moveVehicle(int id)
 
 	if (isPaused && !framePerMove)
 	{
+		printf("OpenGL version supported %d\n", coinLocations.size());
 		return;
 	}
 
@@ -1014,6 +1017,7 @@ void mouseFunc(int btn, int state, int x, int y)
 
 void resetGame()
 {
+	PlaySound(TEXT("CityTraffic.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 	coins.clear();
 	cars.clear();
 	trucks.clear();
