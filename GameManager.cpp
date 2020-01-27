@@ -104,7 +104,6 @@ std::vector<Car> crashChanceCars;
 std::vector<Truck> crashChanceTrucks;
 
 Agent agent;
-//Location agentLocations[3];
 
 bool isPaused = false;
 bool framePerMove = false;
@@ -868,18 +867,18 @@ void moveVehicle(int id)
 
 	if (isPaused && !framePerMove)
 	{
-		printf("OpenGL version supported %d\n", coinLocations.size());
+		//printf("OpenGL version supported %d\n", coinLocations.size());
 		return;
 	}
 
 	for (int i = 0; i < trucks.size(); i++)
 	{
-		if(trucks[i].backLocBot.x == 1 && trucks[i].velocity.direction == left) 
+		if(trucks[i].backLocBot.x <= 1 && trucks[i].velocity.direction == left) 
 		{
 			trucks.erase(trucks.begin() + i);
 		}
 
-		if (trucks[i].backLocBot.x == ww - 1 && trucks[i].velocity.direction == right)
+		if (trucks[i].backLocBot.x >= ww - 1 && trucks[i].velocity.direction == right)
 		{
 			trucks.erase(trucks.begin() + i);
 		}
@@ -902,10 +901,15 @@ void moveVehicle(int id)
 
 	for (int i = 0; i < cars.size(); i++)
 	{
-		if (cars[i].frontLocBot.x == 1 || cars[i].frontLocBot.x == ww - 1)
+		if (cars[i].backLocBot.x <= 1 && cars[i].velocity.direction == left)
 		{
 			cars.erase(cars.begin() + i);
 		}
+
+		if (cars[i].backLocBot.x >= ww - 1 && cars[i].velocity.direction == right)
+		{
+			cars.erase(cars.begin() + i);
+		} 
 
 		if (cars[i].velocity.direction == right)
 		{
@@ -967,14 +971,57 @@ void generateCoin(int id)
 	glutPostRedisplay();
 }
 
+inline const char* toStringDirection(Direction d)
+{
+	switch (d)
+	{
+	case up:   return "Up";
+	case down:   return "Down";
+	case right: return "Right";
+	case left: return "Left";
+	default:      return "[Unknown direction_type]";
+	}
+}
+
+void debugInformation()
+{
+	system("CLS");
+	printf("Agent Left Bottom Location(x,y): %d,%d\n", agent.backLocBotLeft.x, agent.backLocBotLeft.y);
+	printf("Agent Right Bottom Location(x,y): %d,%d\n", agent.backLocBotRight.x, agent.backLocBotRight.y);
+	printf("Agent Top Location(x,y): %d,%d\n", agent.frontLocTop.x, agent.frontLocTop.y);
+
+	for (int i=0;i<cars.size();i++)
+	{
+		printf("%d. Car Direction: %s\n", i, toStringDirection(cars[i].velocity.direction));
+		printf("%d. Car Back Bottom Location(x,y): %d, %d\n", i, cars[i].backLocBot.x, cars[i].backLocBot.x);
+		printf("%d. Car Back Top Location(x,y): %d, %d\n", i, cars[i].backLocTop.x, cars[i].backLocTop.x);
+		printf("%d. Car Front Top Location(x,y): %d, %d\n", i, cars[i].frontLocTop.x, cars[i].frontLocTop.x);
+		printf("%d. Car Front Bottom Location(x,y): %d, %d\n", i, cars[i].frontLocBot.x, cars[i].frontLocBot.x);
+	}
+	for (int i = 0; i < trucks.size(); i++)
+	{
+		printf("%d. Car Direction: %s\n", i, toStringDirection(trucks[i].velocity.direction));
+		printf("%d. Truck Back Bottom Location(x,y): %d, %d\n", i, trucks[i].backLocBot.x, trucks[i].backLocBot.x);
+		printf("%d. Truck Back Top Location(x,y): %d, %d\n", i, trucks[i].backLocTop.x, trucks[i].backLocTop.x);
+		printf("%d. Truck Front Top Location(x,y): %d, %d\n", i, trucks[i].frontLocTop.x, trucks[i].frontLocTop.x);
+		printf("%d. Truck Front Bottom Location(x,y): %d, %d\n", i, trucks[i].frontLocBot.x, trucks[i].frontLocBot.x);
+	}
+
+	for (int i = 0; i < coins.size(); i++)
+	{
+		printf("%d. Coin Center Location(x,y): %d, %d\n", i, coins[i].center.x, coins[i].center.y);
+	}
+}
+
 void mouseFunc(int btn, int state, int x, int y)
 {
 	if (btn == GLUT_RIGHT_BUTTON && state == GLUT_DOWN)
 	{
+		debugInformation();
 		isAgentMoved = true;
 		if (!isPaused) isPaused = true;
 		else
-		{
+		{			
 			framePerMove = true;
 			frameTime += 100;
 			if(frameTime == 2000)
